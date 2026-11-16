@@ -1,0 +1,36 @@
+{
+  "endpoints": [
+    {
+      "name": "daily_rankings",
+      "enabled": true,
+      "method": "GET",
+      "path": "/api/rankings/{country}/{date}",
+      "params": {
+        "country": ["us", "de", "gb"],
+        "date": "{today}"
+      },
+      "pagination": {
+        "type": "cursor",
+        "cursorParam": "cursor",
+        "cursorPath": "data.next_cursor",
+        "hasMorePath": "data.has_more"
+      },
+      "itemsPath": "data.items",
+      "itemKeyFields": ["id"],
+      "schedule": "0 6 * * *",
+      "description": "Daily ranking per country. Adjust path/params once the Tikleap API docs are available."
+    },
+    {
+      "name": "creator_details",
+      "enabled": true,
+      "method": "GET",
+      "path": "/api/creators/{userId}",
+      "params": {},
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["id"],
+      "schedule": "0 7 * * *",
+      "description": "Creator profile + earnings history. Feed user ids from the rankings table via enrichFrom."
+    }
+  ]
+}
