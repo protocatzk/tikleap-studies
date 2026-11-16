@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>tikleap-studies Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: system-ui, sans-serif; margin: 0; background: #0f1117; color: #e6e6e6; }
+    header { padding: 16px 24px; border-bottom: 1px solid #23262f; display: flex; gap: 16px; align-items: center; }
+    header h1 { font-size: 18px; margin: 0; }
+    main { padding: 24px; display: grid; gap: 24px; }
+    section { background: #161923; border: 1px solid #23262f; border-radius: 8px; padding: 16px; }
+    h2 { font-size: 14px; margin: 0 0 12px; color: #9aa3b2; text-transform: uppercase; letter-spacing: .05em; }
+    select, button { background: #1d2130; color: #e6e6e6; border: 1px solid #2c3242; border-radius: 6px; padding: 6px 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #23262f; }
+    th { color: #9aa3b2; }
+    .bar { max-width: 640px; }
+    .row-json { font-family: ui-monospace, monospace; font-size: 12px; color: #9aa3b2; white-space: pre-wrap; }
+    .pager { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>tikleap-studies</h1>
+    <select id="endpoint-select"></select>
+    <button id="refresh">Refresh</button>
+    <span id="status" style="color:#9aa3b2"></span>
+  </header>
+  <main>
+    <section>
+      <h2>Items pro Endpunkt</h2>
+      <div class="bar"><canvas id="counts-chart"></canvas></div>
+    </section>
+    <section>
+      <h2>Synchronisation</h2>
+      <table id="sync-table">
+        <thead><tr><th>Endpunkt</th><th>Letzter Lauf</th><th>Status</th><th>Items</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Records</h2>
+      <table id="records-table">
+        <thead><tr><th>Key</th><th>Geholt am</th><th>Daten</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="pager">
+        <button id="prev">&larr;</button>
+        <span id="page-info"></span>
+        <button id="next">&rarr;</button>
+      </div>
+    </section>
+  </main>
+  <script>
+    const PAGE_SIZE = 25;
+    let offset = 0;
+    let countsChart = null;
+
+    async function fetchJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`${response.status} ${url}`);
+      return response.json();
+    }
+
+    async function loadSummary() {
+      const { counts, sync } = await fetchJson('/api/summary');
+      const ctx = document.getElementById('counts-chart');
+      if (countsChart) countsChart.destroy();
+      countsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: counts.map((c) => c.endpoint),
+          datasets: [{ label: 'Items', data: counts.map((c) => c.items), backgroundColor: '#4f8cff' }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+      const tbody = document.querySelector('#sync-table tbody');
+      tbody.innerHTML = sync.map((s) => `<tr><td>${s.endpoint}</td><td>${s.last_run_at}</td><td>${s.last_status}</td><td>${s.items_upserted}</td></tr>`).join('');
+      return counts;
+    }
+
+    async function loadEndpoints(counts) {
+      const select = document.getElementById('endpoint-select');
+      const endpoints = counts.length ? counts.map((c) => c.endpoint) : await fetchJson('/api/endpoints');
+      select.innerHTML = endpoints.map((e) => `<option>${e}</option>`).join('');
+    }
+
+    async function loadRecords() {
+      const endpoint = encodeURIComponent(document.getElementById('endpoint-select').value);
+      if (!endpoint) return;
+      const { total, rows } = await fetchJson(`/api/records/${endpoint}?limit=${PAGE_SIZE}&offset=${offset}`);
+      const tbody = document.querySelector('#records-table tbody');
+      tbody.innerHTML = rows.map((r) => `<tr><td>${r.item_key}</td><td>${r.fetched_at}</td><td class="row-json">${JSON.stringify(r.data)}</td></tr>`).join('');
+      document.getElementById('page-info').textContent = `${offset + 1}–${Math.min(offset + rows.length, total)} von ${total}`;
+    }
+
+    async function refresh() {
+      try {
+        document.getElementById('status').textContent = 'lade…';
+        const counts = await loadSummary();
+        await loadEndpoints(counts);
+        offset = 0;
+        await loadRecords();
+        document.getElementById('status').textContent = `aktualisiert ${new Date().toLocaleTimeString('de-DE')}`;
+      } catch (error) {
+        document.getElementById('status').textContent = `Fehler: ${error.message}`;
+      }
+    }
+
+    document.getElementById('refresh').addEventListener('click', refresh);
+    document.getElementById('endpoint-select').addEventListener('change', () => { offset = 0; loadRecords(); });
+    document.getElementById('prev').addEventListener('click', () => { offset = Math.max(offset - PAGE_SIZE, 0); loadRecords(); });
+    document.getElementById('next').addEventListener('click', () => { offset += PAGE_SIZE; loadRecords(); });
+    refresh();
+  </script>
+</body>
+</html>

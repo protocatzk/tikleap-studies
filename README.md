@@ -44,6 +44,22 @@ Noch unbekannt aus der Doku: exakte Response-Struktur (`itemsPath`, Cursor-Felde
 - `raw_responses` – Rohantworten als Archiv (nützlich, wenn Felder nachträglich gemappt werden sollen)
 - `sync_state` – letzter Lauf, Status und Item-Anzahl pro Endpunkt
 
+## Dashboard
+
+Nach dem ersten Sammeln (`npm run collect`) startet das Dashboard lokal auf `http://127.0.0.1:3000` (Port via `DASHBOARD_PORT` änderbar, lauscht nur auf Loopback):
+
+```bash
+npm run dashboard
+```
+
+Es zeigt Items pro Endpunkt als Chart, den Sync-Status je Endpunkt und einen Record-Browser mit Pagination. Die REST-API dahinter:
+
+- `GET /api/summary` – Item-Anzahlen und Sync-Status pro Endpunkt
+- `GET /api/endpoints` – Liste der gesammelten Endpunkte
+- `GET /api/records/:endpoint?limit=&offset=` – Records mit geparstem JSON
+
+Sobald die echten Felder der Tikleap-Responses bekannt sind, lässt sich die UI um konkrete Charts erweitern (Top-Gifter, Earnings über Zeit etc.). Alternativ kann jede BI-Tools (Metabase/Grafana) direkt auf die SQLite-Datei in `DB_PATH` verbunden werden.
+
 ## Verhalten
 
 - Rate-Limit: `TIKLEAP_RATE_LIMIT_RPS` (Default 1 req/s), respektiert `Retry-After`
