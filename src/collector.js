@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { request, getPathValue } from './api.js';
-import { saveItems, saveRaw, markSync } from './db.js';
+import { saveItems, saveRaw, markSync, sourceCombos } from './db.js';
 
 export function loadEndpoints() {
   const file = resolve(process.cwd(), 'config/endpoints.json');
@@ -9,47 +9,57 @@ export function loadEndpoints() {
   return parsed.endpoints.filter((e) => e.enabled);
 }
 
-function resolveParams(spec, context) {
-  const params = {};
-  for (const [key, value] of Object.entries(spec || {})) {
-    if (Array.isArray(value)) {
-      params[key] = value;
-    } else if (typeof value === 'string') {
-      params[key] = value in context ? context[value] : value;
-    } else {
-      params[key] = value;
-    }
-  }
-  return params;
+function resolveTemplate(value, context) {
+  return typeof value === 'string' && value in context ? context[value] : value;
 }
 
-function expandParams(params) {
-  const keys = Object.keys(params);
-  const combos = [{}];
-  for (const key of keys) {
-    const value = params[key];
-    const values = Array.isArray(value) ? value : [value];
+function paramParts(spec, key, context) {
+  const value = spec[key];
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return sourceCombos(value);
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) =>
+      entry && typeof entry === 'object' ? sourceCombos(entry) : [{ [key]: resolveTemplate(entry, context) }]
+    );
+  }
+  return [{ [key]: resolveTemplate(value, context) }];
+}
+
+export function expandParams(spec, context = {}) {
+  let combos = [{}];
+  for (const key of Object.keys(spec || {})) {
+    const parts = paramParts(spec, key, context);
     const next = [];
     for (const base of combos) {
-      for (const v of values) next.push({ ...base, [key]: v });
+      for (const part of parts) {
+        next.push({ ...base, ...part });
+      }
     }
-    combos.length = 0;
-    combos.push(...next);
+    combos = next;
   }
-  return combos;
+  const seen = new Set();
+  return combos.filter((combo) => {
+    const serialized = JSON.stringify(combo);
+    if (seen.has(serialized)) return false;
+    seen.add(serialized);
+    return true;
+  });
 }
 
 function fillPath(path, params) {
   return path.replace(/\{(\w+)\}/g, (_, key) => encodeURIComponent(params[key] ?? ''));
 }
 
-async function fetchPage(endpoint, pathParams) {
-  const path = fillPath(endpoint.path, pathParams);
-  const baseParams = { ...pathParams };
-  Object.keys(baseParams).forEach((k) => {
-    if (endpoint.path.includes(`{${k}}`)) delete baseParams[k];
-  });
-  return request(endpoint.method || 'GET', path, baseParams);
+function pathParamKeys(path) {
+  return [...path.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+}
+
+async function fetchPage(endpoint, params) {
+  const path = fillPath(endpoint.path, params);
+  const query = { ...params };
+  for (const key of pathParamKeys(endpoint.path)) delete query[key];
+  return request(endpoint.method || 'GET', path, query);
 }
 
 export async function runEndpoint(endpoint, { maxPages = 50 } = {}) {
@@ -57,9 +67,14 @@ export async function runEndpoint(endpoint, { maxPages = 50 } = {}) {
     today: new Date().toISOString().slice(0, 10),
     yesterday: new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
   };
-  const paramSpec = resolveParams(endpoint.params, context);
-  const combos = expandParams(paramSpec);
+  const combos = expandParams(endpoint.params, context);
+  if (combos.length === 0) {
+    console.log(`SKIP ${endpoint.name}: no parameter combos (source endpoints empty yet?)`);
+    markSync(endpoint.name, 'skipped', 0);
+    return 0;
+  }
 
+  const pathKeys = pathParamKeys(endpoint.path);
   let total = 0;
   for (const combo of combos) {
     let cursor;
@@ -74,8 +89,14 @@ export async function runEndpoint(endpoint, { maxPages = 50 } = {}) {
 
       const items = getPathValue(payload, endpoint.itemsPath);
       const list = Array.isArray(items) ? items : items ? [items] : [];
-      const fresh = list.filter((item) => {
-        const key = (endpoint.itemKeyFields || []).map((f) => item[f]).join(':') || JSON.stringify(item);
+      const enriched = list.map((item) => {
+        const injected = {};
+        for (const key of pathKeys) injected[key] = combo[key];
+        return { _params: injected, ...item };
+      });
+      const fresh = enriched.filter((item) => {
+        const values = (endpoint.itemKeyFields || []).map((f) => getPathValue(item, f));
+        const key = values.every((v) => v !== undefined && v !== null) ? values.join(':') : JSON.stringify(item);
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -95,6 +116,6 @@ export async function runEndpoint(endpoint, { maxPages = 50 } = {}) {
   }
 
   markSync(endpoint.name, 'ok', total);
-  console.log(`OK ${endpoint.name}: ${total} items upserted`);
+  console.log(`OK ${endpoint.name}: ${total} items upserted (${combos.length} combos)`);
   return total;
 }

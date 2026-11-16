@@ -60,12 +60,17 @@ const upsertSyncState = db.prepare(`
     items_upserted = excluded.items_upserted
 `);
 
+function getByPath(obj, path) {
+  return String(path).split('.').reduce((acc, key) => (acc === null || acc === undefined ? undefined : acc[key]), obj);
+}
+
 export function saveItems(endpoint, items, keyFields) {
   const persist = db.transaction((rows) => {
     for (const row of rows) upsertRecord.run(row);
   });
   const rows = items.map((item) => {
-    const keySource = keyFields.length ? keyFields.map((f) => item[f]).join(':') : JSON.stringify(item);
+    const values = keyFields.map((f) => getByPath(item, f));
+    const keySource = values.every((v) => v !== undefined && v !== null) ? values.join(':') : JSON.stringify(item);
     return { endpoint, itemKey: String(keySource), data: JSON.stringify(item) };
   });
   persist(rows);
@@ -85,6 +90,17 @@ export function markSync(endpoint, status, count) {
   upsertSyncState.run({ endpoint, status, count });
 }
 
-export function knownItemKeys(endpoint) {
-  return new Set(db.prepare('SELECT item_key FROM records WHERE endpoint = ?').all(endpoint).map((r) => r.item_key));
+export function sourceCombos({ fromEndpoint, fields }, { limit = 5000 } = {}) {
+  const entries = Object.entries(fields);
+  const cols = entries
+    .map(([param, field]) => `json_extract(data, '$.${field}') AS "${param}"`)
+    .join(', ');
+  const rows = db.prepare(`SELECT DISTINCT ${cols} FROM records WHERE endpoint = ? LIMIT ?`).all(fromEndpoint, limit);
+  return rows
+    .map((row) => {
+      const combo = {};
+      for (const [param] of entries) combo[param] = row[param];
+      return combo;
+    })
+    .filter((combo) => Object.values(combo).every((v) => v !== null && v !== undefined && v !== ''));
 }

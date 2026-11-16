@@ -17,15 +17,26 @@ npm run backfill   # Backfill: zieht für datumsparametrisierte Endpunkte die le
 npm start          # Scheduler: läuft und führt Endpunkte nach ihrem cron-Schedule aus
 ```
 
-## Endpunkte konfigurieren
+## Endpunkte
 
-Alle Endpunkte stehen in `config/endpoints.json` – dort `path`, `params`, Paginierung und cron-Schedule an die offizielle Tikleap-API-Doku anpassen:
+Vorkonfiguriert sind die Tikleap-Endpunkte in `config/endpoints.json`:
 
-- `path`: URL-Pfad, Platzhalter `{country}` o.ä. werden aus `params` gefüllt
-- `params`: feste Werte, Arrays (wird zu einem Request pro Wert) oder `{today}`/`{yesterday}`
+- `GET /global-rankings`, `GET /gifters` – Einstiegspunkte und Quelle der Usernamens
+- `GET /gifters/{username}`, `GET /gifters/{username}/gift-gallery[/{period}]` – Gifter-Profile und Galerien
+- `GET /creators/{username}/streams`, `.../streams/{stream_id}`, `.../streams/{stream_id}/events` – Streams und Events pro Creator
+- `GET /creators/{username}/live-video` – aktueller Live-Status
+- `GET /search` (deaktiviert, bis Suchbegriffe/Query-Param feststehen), `POST /creators/{username}/streams` (deaktiviert, Schreibaktion)
+
+Konfiguration pro Endpunkt:
+
+- `path`: URL-Pfad, Platzhalter wie `{username}`/`{stream_id}` werden aus `params` gefüllt
+- `params`: feste Werte, Arrays (ein Request pro Wert) oder `{today}`/`{yesterday}`
+- Verkettung: `{ "fromEndpoint": "gifters", "fields": { "username": "username" } }` holt Werte aus bereits gesammelten Items – so laufen z.B. Creator-Endpunkte automatisch über alle bekannten Usernamens. Mehrere Felder (z.B. `username` + `stream_id` aus `creator_streams`) werden als Paar kombiniert. Gespeicherte Items enthalten ihre Pfad-Parameter unter `_params`.
 - `pagination`: `cursorParam` (Query-Param), `cursorPath`/`hasMorePath` (JSON-Pfade in der Response)
 - `itemsPath`: JSON-Pfad zur Item-Liste, `itemKeyFields`: Felder, die ein Item eindeutig machen (Upsert-Key)
 - `schedule`: cron-Ausdruck für den Dauerbetrieb
+
+Noch unbekannt aus der Doku: exakte Response-Struktur (`itemsPath`, Cursor-Felder) und die Perioden-Werte für `gift-gallery/{period}` – bei Bedarf in `config/endpoints.json` anpassen.
 
 ## Datenmodell (SQLite, `DB_PATH`)
 

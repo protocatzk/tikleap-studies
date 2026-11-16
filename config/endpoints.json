@@ -1,36 +1,186 @@
 {
   "endpoints": [
     {
-      "name": "daily_rankings",
+      "name": "global_rankings",
       "enabled": true,
       "method": "GET",
-      "path": "/api/rankings/{country}/{date}",
+      "path": "/global-rankings",
+      "params": {},
+      "pagination": {
+        "type": "cursor",
+        "cursorParam": "cursor",
+        "cursorPath": "next_cursor",
+        "hasMorePath": "has_more"
+      },
+      "itemsPath": "items",
+      "itemKeyFields": ["username"],
+      "schedule": "0 */6 * * *",
+      "description": "Global rankings; primary source of usernames for the creator endpoints."
+    },
+    {
+      "name": "gifters",
+      "enabled": true,
+      "method": "GET",
+      "path": "/gifters",
+      "params": {},
+      "pagination": {
+        "type": "cursor",
+        "cursorParam": "cursor",
+        "cursorPath": "next_cursor",
+        "hasMorePath": "has_more"
+      },
+      "itemsPath": "items",
+      "itemKeyFields": ["username"],
+      "schedule": "0 */6 * * *",
+      "description": "Gifter list; second source of usernames."
+    },
+    {
+      "name": "gifter_details",
+      "enabled": true,
+      "method": "GET",
+      "path": "/gifters/{username}",
       "params": {
-        "country": ["us", "de", "gb"],
-        "date": "{today}"
+        "username": { "fromEndpoint": "gifters", "fields": { "username": "username" } }
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["username"],
+      "schedule": "0 7 * * *",
+      "description": "Gifter profile, fanned out over all usernames collected from /gifters."
+    },
+    {
+      "name": "gifter_gift_gallery",
+      "enabled": true,
+      "method": "GET",
+      "path": "/gifters/{username}/gift-gallery",
+      "params": {
+        "username": { "fromEndpoint": "gifters", "fields": { "username": "username" } }
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["username"],
+      "schedule": "0 7 * * *",
+      "description": "Gift gallery overview per gifter."
+    },
+    {
+      "name": "gifter_gift_gallery_period",
+      "enabled": true,
+      "method": "GET",
+      "path": "/gifters/{username}/gift-gallery/{period}",
+      "params": {
+        "username": { "fromEndpoint": "gifters", "fields": { "username": "username" } },
+        "period": ["daily", "weekly", "monthly"]
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["username", "period"],
+      "schedule": "30 7 * * *",
+      "description": "Periodic gift gallery. Adjust the period values to the ones the API docs define."
+    },
+    {
+      "name": "creator_streams",
+      "enabled": true,
+      "method": "GET",
+      "path": "/creators/{username}/streams",
+      "params": {
+        "username": [
+          { "fromEndpoint": "global_rankings", "fields": { "username": "username" } },
+          { "fromEndpoint": "gifters", "fields": { "username": "username" } }
+        ]
       },
       "pagination": {
         "type": "cursor",
         "cursorParam": "cursor",
-        "cursorPath": "data.next_cursor",
-        "hasMorePath": "data.has_more"
+        "cursorPath": "next_cursor",
+        "hasMorePath": "has_more"
       },
-      "itemsPath": "data.items",
-      "itemKeyFields": ["id"],
-      "schedule": "0 6 * * *",
-      "description": "Daily ranking per country. Adjust path/params once the Tikleap API docs are available."
+      "itemsPath": "items",
+      "itemKeyFields": ["_params.username", "id"],
+      "schedule": "0 8 * * *",
+      "description": "Stream list per creator, fanned out over usernames from rankings and gifters."
     },
     {
-      "name": "creator_details",
+      "name": "creator_stream_details",
       "enabled": true,
       "method": "GET",
-      "path": "/api/creators/{userId}",
-      "params": {},
+      "path": "/creators/{username}/streams/{stream_id}",
+      "params": {
+        "username": { "fromEndpoint": "creator_streams", "fields": { "username": "_params.username", "stream_id": "id" } }
+      },
       "pagination": null,
       "itemsPath": "data",
-      "itemKeyFields": ["id"],
-      "schedule": "0 7 * * *",
-      "description": "Creator profile + earnings history. Feed user ids from the rankings table via enrichFrom."
+      "itemKeyFields": ["_params.username", "id"],
+      "schedule": "30 8 * * *",
+      "description": "Stream details for each collected stream (username + stream_id pairs)."
+    },
+    {
+      "name": "creator_stream_events",
+      "enabled": true,
+      "method": "GET",
+      "path": "/creators/{username}/streams/{stream_id}/events",
+      "params": {
+        "username": { "fromEndpoint": "creator_streams", "fields": { "username": "_params.username", "stream_id": "id" } }
+      },
+      "pagination": {
+        "type": "cursor",
+        "cursorParam": "cursor",
+        "cursorPath": "next_cursor",
+        "hasMorePath": "has_more"
+      },
+      "itemsPath": "items",
+      "itemKeyFields": ["_params.username", "_params.stream_id", "id"],
+      "schedule": "0 9 * * *",
+      "description": "Gift events per stream (username + stream_id pairs from creator_streams)."
+    },
+    {
+      "name": "creator_live_video",
+      "enabled": true,
+      "method": "GET",
+      "path": "/creators/{username}/live-video",
+      "params": {
+        "username": [
+          { "fromEndpoint": "global_rankings", "fields": { "username": "username" } },
+          { "fromEndpoint": "gifters", "fields": { "username": "username" } }
+        ]
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["username"],
+      "schedule": "*/30 * * * *",
+      "description": "Current live video state per creator."
+    },
+    {
+      "name": "search",
+      "enabled": false,
+      "method": "GET",
+      "path": "/search",
+      "params": {
+        "query": ["tiktok"]
+      },
+      "pagination": {
+        "type": "cursor",
+        "cursorParam": "cursor",
+        "cursorPath": "next_cursor",
+        "hasMorePath": "has_more"
+      },
+      "itemsPath": "items",
+      "itemKeyFields": ["username"],
+      "schedule": null,
+      "description": "Search. Disabled until real query terms and the query param name from the docs are set."
+    },
+    {
+      "name": "creator_streams_track",
+      "enabled": false,
+      "method": "POST",
+      "path": "/creators/{username}/streams",
+      "params": {
+        "username": { "fromEndpoint": "global_rankings", "fields": { "username": "username" } }
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["username"],
+      "schedule": null,
+      "description": "POST variant (write action, e.g. trigger tracking). Disabled by default; enable consciously."
     }
   ]
 }
