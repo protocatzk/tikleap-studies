@@ -1,0 +1,161 @@
+{
+  "endpoints": [
+    {
+      "name": "global_rankings",
+      "enabled": true,
+      "method": "GET",
+      "path": "/global-rankings",
+      "params": {},
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["username"],
+      "schedule": "0 */6 * * *",
+      "description": "Global rankings; primary source of usernames for the creator endpoints. API returns up to 200 rows in one request, no pagination."
+    },
+    {
+      "name": "gifters",
+      "enabled": true,
+      "method": "GET",
+      "path": "/gifters",
+      "params": {},
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["username"],
+      "schedule": "0 */6 * * *",
+      "description": "Gifter list; second source of usernames."
+    },
+    {
+      "name": "gifter_details",
+      "enabled": true,
+      "method": "GET",
+      "path": "/gifters/{username}",
+      "params": {
+        "username": { "fromEndpoint": "gifters", "fields": { "username": "username" } }
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["username"],
+      "schedule": "0 7 * * *",
+      "description": "Gifter profile, fanned out over all usernames collected from /gifters."
+    },
+    {
+      "name": "gifter_gift_gallery",
+      "enabled": true,
+      "method": "GET",
+      "path": "/gifters/{username}/gift-gallery",
+      "params": {
+        "username": { "fromEndpoint": "gifters", "fields": { "username": "username" } }
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["_params.username"],
+      "schedule": "0 7 * * *",
+      "description": "Gift gallery overview per gifter."
+    },
+    {
+      "name": "gifter_gift_gallery_period",
+      "enabled": true,
+      "method": "GET",
+      "path": "/gifters/{username}/gift-gallery/{period}",
+      "params": {
+        "username": { "fromEndpoint": "gifters", "fields": { "username": "username" } },
+        "period": ["today"]
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["_params.username", "_params.period", "username"],
+      "schedule": "30 7 * * *",
+      "description": "Periodic gift gallery; the API expects period as YYYYMMDD or YYYY-MM-DD (we pass today's date)."
+    },
+    {
+      "name": "creator_streams",
+      "enabled": true,
+      "method": "GET",
+      "path": "/creators/{username}/streams",
+      "params": {
+        "username": [
+          { "fromEndpoint": "global_rankings", "fields": { "username": "username" } },
+          { "fromEndpoint": "gifters", "fields": { "username": "username" } }
+        ]
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["_params.username", "id"],
+      "schedule": "0 8 * * *",
+      "description": "Stream list per creator, fanned out over usernames from rankings and gifters. No pagination on the API."
+    },
+    {
+      "name": "creator_stream_details",
+      "enabled": true,
+      "method": "GET",
+      "path": "/creators/{username}/streams/{stream_id}",
+      "params": {
+        "username": { "fromEndpoint": "creator_streams", "fields": { "username": "_params.username", "stream_id": "id" } }
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["_params.username", "id"],
+      "schedule": "30 8 * * *",
+      "description": "Stream details for each collected stream (username + stream_id pairs)."
+    },
+    {
+      "name": "creator_stream_events",
+      "enabled": true,
+      "method": "GET",
+      "path": "/creators/{username}/streams/{stream_id}/events",
+      "params": {
+        "username": { "fromEndpoint": "creator_streams", "fields": { "username": "_params.username", "stream_id": "id" } }
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["_params.username", "_params.stream_id", "time", "user_id", "type"],
+      "schedule": "0 9 * * *",
+      "description": "Gift/chat events per stream (join/comment/gift events; no unique id in the payload, so time+user+type forms the key)."
+    },
+    {
+      "name": "creator_live_video",
+      "enabled": true,
+      "method": "GET",
+      "path": "/creators/{username}/live-video",
+      "params": {
+        "username": [
+          { "fromEndpoint": "global_rankings", "fields": { "username": "username" } },
+          { "fromEndpoint": "gifters", "fields": { "username": "username" } }
+        ]
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["_params.username", "quality"],
+      "schedule": "*/30 * * * *",
+      "description": "Current live video state per creator (one row per quality variant)."
+    },
+    {
+      "name": "search",
+      "enabled": false,
+      "method": "GET",
+      "path": "/search",
+      "params": {
+        "query": ["tiktok"]
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["username"],
+      "schedule": null,
+      "description": "Search. Disabled until real query terms and the query param name from the docs are confirmed."
+    },
+    {
+      "name": "creator_streams_track",
+      "enabled": false,
+      "method": "POST",
+      "path": "/creators/{username}/streams",
+      "params": {
+        "username": { "fromEndpoint": "global_rankings", "fields": { "username": "username" } }
+      },
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["username"],
+      "schedule": null,
+      "description": "POST variant (write action, e.g. trigger tracking). Disabled by default; enable consciously."
+    }
+  ]
+}

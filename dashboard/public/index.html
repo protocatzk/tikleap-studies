@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>tikleap-studies Dashboard</title>
+  <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+  <header>
+    <h1>tikleap-studies</h1>
+    <span id="health" class="health"></span>
+    <label class="auto-refresh">
+      <input type="checkbox" id="auto-refresh" />
+      Auto-Refresh (10&nbsp;s)
+    </label>
+    <button id="refresh">Refresh</button>
+  </header>
+
+  <nav id="tabs">
+    <button data-tab="overview" class="active">Übersicht</button>
+    <button data-tab="endpoints">Endpunkte</button>
+    <button data-tab="explorer">Explorer</button>
+    <button data-tab="raw">Raw-Responses</button>
+  </nav>
+
+  <main>
+    <!-- ============ ÜBERSICHT ============ -->
+    <section id="tab-overview" class="tab active">
+      <div class="kpis" id="kpi-bar"></div>
+      <div class="card">
+        <h2>Items pro Endpunkt</h2>
+        <div class="bar"><canvas id="counts-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Synchronisation</h2>
+        <table id="sync-table">
+          <thead><tr><th>Endpunkt</th><th>Letzter Lauf</th><th>Status</th><th>Items</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ ENDPUNKTE ============ -->
+    <section id="tab-endpoints" class="tab">
+      <div class="toolbar">
+        <select id="endpoint-select"></select>
+        <input id="endpoint-search" type="search" placeholder="In item_key oder JSON suchen…" />
+        <label>Zeilen/Seite
+          <select id="page-size">
+            <option>25</option>
+            <option selected>50</option>
+            <option>100</option>
+            <option>200</option>
+          </select>
+        </label>
+      </div>
+      <div class="card">
+        <table id="records-table">
+          <thead><tr><th>Key</th><th>Geholt am</th><th>Daten</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="pager">
+          <button id="prev">&larr;</button>
+          <span id="page-info"></span>
+          <button id="next">&rarr;</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ EXPLORER ============ -->
+    <section id="tab-explorer" class="tab">
+      <div class="toolbar">
+        <select id="facet-endpoint"></select>
+        <select id="facet-field"></select>
+        <button id="facet-load">Verteilung laden</button>
+      </div>
+      <div class="card">
+        <h2>Top-Werte eines Feldes</h2>
+        <div class="bar"><canvas id="facet-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Numerische Kennzahlen</h2>
+        <div class="toolbar">
+          <select id="metric-field"></select>
+          <button id="metric-load">Kennzahlen laden</button>
+        </div>
+        <table id="metrics-table">
+          <thead><tr><th>Anzahl</th><th>Summe</th><th>Mittel</th><th>Min</th><th>Max</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ RAW ============ -->
+    <section id="tab-raw" class="tab">
+      <div class="toolbar">
+        <select id="raw-endpoint"></select>
+        <button id="raw-load">Neueste Payloads laden</button>
+      </div>
+      <div class="card">
+        <div id="raw-list" class="raw-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="json-dialog">
+    <h2 id="json-title"></h2>
+    <pre id="json-view" class="row-json"></pre>
+    <form method="dialog"><button>Schließen</button></form>
+  </dialog>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

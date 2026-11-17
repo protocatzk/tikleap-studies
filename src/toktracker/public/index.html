@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>toktracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>tok<span>tracker</span></h1>
+    <nav>
+      <button data-tab="live" class="active">Live jetzt</button>
+      <button data-tab="tracked">Tracking</button>
+      <button data-tab="leaderboard">Leaderboard</button>
+      <button data-tab="donors">Top-Spender</button>
+      <button data-tab="creator">Creator</button>
+    </nav>
+    <div id="health" class="health"></div>
+  </header>
+
+  <main>
+    <section id="tab-live">
+      <div class="bar">
+        <h2>Live-Streams</h2>
+        <span class="muted" id="live-ts"></span>
+      </div>
+      <div id="live-empty" class="empty hidden">Gerade niemand live (oder der Tracker läuft noch).</div>
+      <div id="live-grid" class="live-grid"></div>
+    </section>
+
+    <section id="tab-leaderboard" class="hidden">
+      <div class="bar">
+        <h2>Leaderboard</h2>
+        <div class="controls">
+          <select id="lb-by">
+            <option value="diamonds">Diamonds</option>
+            <option value="earnings">Earnings ($)</option>
+            <option value="amount">Gifter-Amount ($)</option>
+            <option value="gifts">Gifter-Gifts</option>
+            <option value="rank">Rang (Verbesserung)</option>
+          </select>
+          <select id="lb-days">
+            <option value="1">24 Stunden</option>
+            <option value="7" selected>7 Tage</option>
+            <option value="30">30 Tage</option>
+          </select>
+        </div>
+      </div>
+      <table class="table" id="lb-table">
+        <thead>
+          <tr><th></th><th>Creator</th><th id="lb-current">Wert</th><th>Veränderung</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section id="tab-tracked" class="hidden">
+      <div class="bar">
+        <h2>Getrackte Streamer</h2>
+        <span class="muted">Nur diese User werden gepollt</span>
+      </div>
+      <form id="track-form" class="rates">
+        <label>Streamer hinzufügen
+          <input id="track-input" placeholder="@username" list="track-suggestions" required />
+        </label>
+        <button type="submit">Tracken</button>
+      </form>
+      <form id="track-bulk-form" class="rates">
+        <label>Bulk-Add (mehrere: eine pro Zeile oder durch Komma getrennt)
+          <textarea id="track-bulk-input" rows="4" placeholder="@streamer1&#10;@streamer2, streamer3"></textarea>
+        </label>
+        <button type="submit">Alle tracken</button>
+      </form>
+      <div id="track-feedback" class="muted"></div>
+      <datalist id="track-suggestions"></datalist>
+      <table class="table" id="track-table">
+        <thead>
+          <tr><th>Streamer</th><th>Status</th><th>Gefolgt seit</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <h3>Vorschläge (aus dem Collector, Top nach Rang)</h3>
+      <div id="track-suggest-box" class="suggest-box"></div>
+      <button id="track-suggest-all">Alle Vorschläge tracken</button>
+
+      <h3>Verlauf der getrackten Streamer</h3>
+      <div class="bar">
+        <div class="controls">
+          <select id="tc-metric">
+            <option value="diamonds">Diamonds-Verlauf</option>
+            <option value="earnings">Earnings-Verlauf ($, netto)</option>
+            <option value="sessions">Diamonds je Session (inkl. Historie)</option>
+          </select>
+          <select id="tc-days">
+            <option value="1">24 Stunden</option>
+            <option value="7" selected>7 Tage</option>
+            <option value="30">30 Tage</option>
+          </select>
+        </div>
+      </div>
+      <div class="chart"><canvas id="tc-chart"></canvas><div id="tc-legend" class="legend"></div></div>
+    </section>
+
+    <section id="tab-donors" class="hidden">
+      <div class="bar">
+        <h2>Top-Spender</h2>
+        <div class="controls">
+          <select id="do-days">
+            <option value="1">24 Stunden</option>
+            <option value="7" selected>7 Tage</option>
+            <option value="30">30 Tage</option>
+          </select>
+          <select id="do-creator">
+            <option value="">Alle Creator</option>
+          </select>
+        </div>
+      </div>
+      <div class="rates muted" id="do-rates"></div>
+      <table class="table" id="do-table">
+        <thead>
+          <tr><th></th><th>Sender</th><th>Gifts</th><th>Diamonds</th><th>Wert (netto)</th><th>Geschenkt an</th><th>Zuletzt</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <h3>Kurse anpassen</h3>
+      <form id="rate-form" class="rates">
+        <label>USD pro Diamond (brutto) <input name="usd_per_diamond_gross" type="number" step="0.0001" min="0" /></label>
+        <label>USD pro Diamond (netto) <input name="usd_per_diamond_net" type="number" step="0.0001" min="0" /></label>
+        <label>EUR pro USD <input name="usd_to_eur" type="number" step="0.0001" min="0" /></label>
+        <label>Primärwährung
+          <select name="primary_currency"><option>EUR</option><option>USD</option></select>
+        </label>
+        <button type="submit">Speichern</button>
+        <span id="rate-status" class="muted"></span>
+      </form>
+    </section>
+
+    <section id="tab-creator" class="hidden">
+      <div class="bar">
+        <h2>Creator</h2>
+        <input id="cr-search" placeholder="@username" />
+        <button id="cr-load">Laden</button>
+        <button id="cr-track" class="hidden">Tracken</button>
+      </div>
+      <div id="cr-empty" class="empty hidden">Streamer ist nicht im Tracking — im Tab „Tracking" hinzufügen, damit Live-Polls und Sessions anlaufen.</div>
+      <div id="cr-profile" class="profile"></div>
+      <div id="cr-charts" class="charts"></div>
+      <h3>Sessions</h3>
+      <table class="table" id="cr-sessions">
+        <thead>
+          <tr><th>Start</th><th>Dauer</th><th>Diamonds</th><th>Netto $ · €</th><th>Gifts</th><th>Peak</th><th>Unique</th><th>Status</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer class="muted">Datenquelle: Tikleap API · Snapshots via toktracker-Collector</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
