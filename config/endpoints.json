@@ -6,16 +6,11 @@
       "method": "GET",
       "path": "/global-rankings",
       "params": {},
-      "pagination": {
-        "type": "cursor",
-        "cursorParam": "cursor",
-        "cursorPath": "next_cursor",
-        "hasMorePath": "has_more"
-      },
-      "itemsPath": "items",
+      "pagination": null,
+      "itemsPath": "data",
       "itemKeyFields": ["username"],
       "schedule": "0 */6 * * *",
-      "description": "Global rankings; primary source of usernames for the creator endpoints."
+      "description": "Global rankings; primary source of usernames for the creator endpoints. API returns up to 200 rows in one request, no pagination."
     },
     {
       "name": "gifters",
@@ -23,13 +18,8 @@
       "method": "GET",
       "path": "/gifters",
       "params": {},
-      "pagination": {
-        "type": "cursor",
-        "cursorParam": "cursor",
-        "cursorPath": "next_cursor",
-        "hasMorePath": "has_more"
-      },
-      "itemsPath": "items",
+      "pagination": null,
+      "itemsPath": "data",
       "itemKeyFields": ["username"],
       "schedule": "0 */6 * * *",
       "description": "Gifter list; second source of usernames."
@@ -58,7 +48,7 @@
       },
       "pagination": null,
       "itemsPath": "data",
-      "itemKeyFields": ["username"],
+      "itemKeyFields": ["_params.username"],
       "schedule": "0 7 * * *",
       "description": "Gift gallery overview per gifter."
     },
@@ -69,13 +59,13 @@
       "path": "/gifters/{username}/gift-gallery/{period}",
       "params": {
         "username": { "fromEndpoint": "gifters", "fields": { "username": "username" } },
-        "period": ["daily", "weekly", "monthly"]
+        "period": ["today"]
       },
       "pagination": null,
       "itemsPath": "data",
-      "itemKeyFields": ["username", "period"],
+      "itemKeyFields": ["_params.username", "_params.period", "username"],
       "schedule": "30 7 * * *",
-      "description": "Periodic gift gallery. Adjust the period values to the ones the API docs define."
+      "description": "Periodic gift gallery; the API expects period as YYYYMMDD or YYYY-MM-DD (we pass today's date)."
     },
     {
       "name": "creator_streams",
@@ -88,16 +78,11 @@
           { "fromEndpoint": "gifters", "fields": { "username": "username" } }
         ]
       },
-      "pagination": {
-        "type": "cursor",
-        "cursorParam": "cursor",
-        "cursorPath": "next_cursor",
-        "hasMorePath": "has_more"
-      },
-      "itemsPath": "items",
+      "pagination": null,
+      "itemsPath": "data",
       "itemKeyFields": ["_params.username", "id"],
       "schedule": "0 8 * * *",
-      "description": "Stream list per creator, fanned out over usernames from rankings and gifters."
+      "description": "Stream list per creator, fanned out over usernames from rankings and gifters. No pagination on the API."
     },
     {
       "name": "creator_stream_details",
@@ -121,16 +106,11 @@
       "params": {
         "username": { "fromEndpoint": "creator_streams", "fields": { "username": "_params.username", "stream_id": "id" } }
       },
-      "pagination": {
-        "type": "cursor",
-        "cursorParam": "cursor",
-        "cursorPath": "next_cursor",
-        "hasMorePath": "has_more"
-      },
-      "itemsPath": "items",
-      "itemKeyFields": ["_params.username", "_params.stream_id", "id"],
+      "pagination": null,
+      "itemsPath": "data",
+      "itemKeyFields": ["_params.username", "_params.stream_id", "time", "user_id", "type"],
       "schedule": "0 9 * * *",
-      "description": "Gift events per stream (username + stream_id pairs from creator_streams)."
+      "description": "Gift/chat events per stream (join/comment/gift events; no unique id in the payload, so time+user+type forms the key)."
     },
     {
       "name": "creator_live_video",
@@ -145,9 +125,9 @@
       },
       "pagination": null,
       "itemsPath": "data",
-      "itemKeyFields": ["username"],
+      "itemKeyFields": ["_params.username", "quality"],
       "schedule": "*/30 * * * *",
-      "description": "Current live video state per creator."
+      "description": "Current live video state per creator (one row per quality variant)."
     },
     {
       "name": "search",
@@ -157,16 +137,11 @@
       "params": {
         "query": ["tiktok"]
       },
-      "pagination": {
-        "type": "cursor",
-        "cursorParam": "cursor",
-        "cursorPath": "next_cursor",
-        "hasMorePath": "has_more"
-      },
-      "itemsPath": "items",
+      "pagination": null,
+      "itemsPath": "data",
       "itemKeyFields": ["username"],
       "schedule": null,
-      "description": "Search. Disabled until real query terms and the query param name from the docs are set."
+      "description": "Search. Disabled until real query terms and the query param name from the docs are confirmed."
     },
     {
       "name": "creator_streams_track",

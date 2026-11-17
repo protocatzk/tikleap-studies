@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { config } from './config.js';
@@ -6,8 +6,8 @@ import { config } from './config.js';
 const dbPath = resolve(process.cwd(), config.dbPath);
 mkdirSync(dirname(dbPath), { recursive: true });
 
-export const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
+export const db = new DatabaseSync(dbPath);
+db.exec('PRAGMA journal_mode = WAL');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS records (
@@ -65,15 +65,19 @@ function getByPath(obj, path) {
 }
 
 export function saveItems(endpoint, items, keyFields) {
-  const persist = db.transaction((rows) => {
-    for (const row of rows) upsertRecord.run(row);
-  });
   const rows = items.map((item) => {
     const values = keyFields.map((f) => getByPath(item, f));
     const keySource = values.every((v) => v !== undefined && v !== null) ? values.join(':') : JSON.stringify(item);
     return { endpoint, itemKey: String(keySource), data: JSON.stringify(item) };
   });
-  persist(rows);
+  db.exec('BEGIN');
+  try {
+    for (const row of rows) upsertRecord.run(row);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
   return rows.length;
 }
 
